@@ -289,6 +289,10 @@ app.get('/api/votes/:roomID', (req, res) => {
   });
 });
 
+app.get('/api/port', (req, res) => {
+  res.send(process.env.PORT);
+})
+
 
 // ────────────────────────────────────────────────────────────────────────────────
 
@@ -334,6 +338,6 @@ db.models.sequelize.sync().then(() => {
       console.log('Received new member!', roomID);
       io.sockets.emit('join', roomID);
     });
-
   });
 });
+

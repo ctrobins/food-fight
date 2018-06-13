@@ -29,15 +29,17 @@ class Room extends React.Component {
     this.voteApprove = this.voteApprove.bind(this);
     this.voteVeto = this.voteVeto.bind(this);
 
-    // Client-side socket events
-    this.socket = io.connect(process.env.PORT || 'http://localhost:3000');
+    //Client-side socket events
+    this.socket = io.connect();
+    this.socket.emit('join', this.roomID);
+
     this.socket.on('chat', message => {
       if (message.roomID === this.roomID) {
         console.log('Received message', message);
         this.setState({
           messages: [...this.state.messages, message.message],
         });
-        this.getMessages();
+        //this.getMessages();
       }
     });
     this.socket.on('vote', roomID => {
@@ -72,9 +74,8 @@ class Room extends React.Component {
     this.getMessages();
     this.getRoomInfo();
     this.getVotes();
-    this.socket.emit('join', this.roomID);
-    this.setState({
-      loggedInUsername: this.props.username
+    $.get(`/api/port/`).then(port=> {
+      this.setSockets(port);
     });
   }
 
@@ -112,6 +113,7 @@ class Room extends React.Component {
       }
     });
   }
+
 
   // Activated on click of RestaurantListItem component
   nominateRestaurant(restaurant, reloading = false) {
