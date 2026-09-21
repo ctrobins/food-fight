@@ -1,32 +1,32 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
-import $ from 'jquery';
-import { BrowserRouter, Route, Link } from 'react-router-dom';
-import axios from 'axios';
+import { BrowserRouter, Route } from 'react-router-dom';
 
 import Navbar from './components/Navbar.jsx';
-import MainView from './components/MainView.jsx'
-import SignupPage from './components/AuthUserMenu/SignupPage.jsx';
-import Room from './components/Room.jsx';
+import api from './api';
 
 import 'bulma/css/bulma.css';
 import 'animate.css/animate.css';
 import './styles/main.scss';
 
+const MainView = React.lazy(() => import('./components/MainView.jsx'));
+const SignupPage = React.lazy(() => import('./components/AuthUserMenu/SignupPage.jsx'));
+const Room = React.lazy(() => import('./components/Room.jsx'));
+
 class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      query: '',
-      restaurants: [],
-
       loggedIn: false,
       loggedInUsername: '',
       loginError: false,
+      subscribeError: false,
       googleEnabled: false,
       googleSignInMessage: null,
-
-      searchedUsers: []
+      needsZip: false,
+      zipDraft: '',
+      zipError: false,
+      searchedUsers: [],
     };
   }
 
@@ -37,157 +37,167 @@ class App extends React.Component {
       this.setState({
         googleSignInMessage: 'Google sign-in is not configured on this server. Use email and password, or add GOOGLE_AUTH_CLIENT_ID and GOOGLE_AUTH_CLIENT_SECRET to .env.',
       });
-      window.history.replaceState({}, '', '/');
     } else if (googleSignIn === 'failed') {
       this.setState({
         googleSignInMessage: 'Google sign-in failed. Please try again or use email and password.',
       });
-      window.history.replaceState({}, '', '/');
+    }
+    if (googleSignIn || params.get('setZip') === '1') {
+      params.delete('googleSignIn');
+      params.delete('setZip');
+      const next = params.toString();
+      window.history.replaceState({}, '', next ? `/?${next}` : '/');
     }
 
-    axios.get('/checklogin')
-      .then(res => {
-        if (res.data.user) {
-          console.log('Logged in as:', res.data.user.email);
-          this.setState({
-            loggedIn: true,
-            loggedInUsername: res.data.user.email,
-            loginError: false,
-          });
-        }
-      });
+    this.refreshSession().catch(() => {});
 
-    axios.get('/api/auth/providers')
-      .then(res => {
+    api.get('/api/auth/providers')
+      .then((res) => {
         this.setState({ googleEnabled: Boolean(res.data.google) });
       });
   }
 
-  searchYelp() {
-    $.post('/api/search', { zip: this.state.query }, (data, status) => {
-      console.log(`Requested Yelp search for ${this.state.query}:`, status);
-      if (data.businesses) {
-        this.setState({
-          restaurants: data.businesses,
-        });
-      }
-    });
-  }
-
-  updateQuery(e) {
-    this.setState({
-      query: e.target.value,
-    });
+  refreshSession() {
+    return api.get('/checklogin')
+      .then((res) => {
+        if (res.data.user) {
+          this.setState({
+            loggedIn: true,
+            loggedInUsername: res.data.user.email,
+            loginError: false,
+            subscribeError: false,
+            needsZip: res.data.user.zipcode == null,
+          });
+        } else {
+          this.setState({
+            loggedIn: false,
+            loggedInUsername: '',
+            needsZip: false,
+          });
+        }
+      });
   }
 
   searchUsers(query) {
-    console.log('SEARCHING FOR', query);
-    axios.post('/searchUsers', { query })
-      .then(res => {
-        console.log('RESULTS', res);
+    api.post('/searchUsers', { query })
+      .then((res) => {
         this.setState({
-          searchedUsers: res.data
+          searchedUsers: res.data,
         });
       });
   }
 
-  //
-  // ─── USER AUTH ──────────────────────────────────────────────────────────────────
-  //
   subscribe(email, password, zip) {
-    console.log(`Subscribe with ${email} and ${password}`);
-    axios.post('/subscribe', {
+    api.post('/subscribe', {
       email,
       password,
-      zip
+      zip,
     })
-      .then((res) => {
-        const email = JSON.parse(res.config.data).email;
-        if (res) {
-          this.setState({
-            loggedIn: true,
-            loggedInUsername: email
-          })
-        }
-      })
+      .then(() => this.refreshSession())
       .catch(() => {
         this.setState({
-          subscribeError: true
+          subscribeError: true,
         });
       });
   }
 
   login(email, password) {
-    console.log(`Login with ${email} and ${password}`);
-    axios.post('/login', {
+    api.post('/login', {
       email,
-      password
+      password,
     })
-      .then(res => {
-        if (res.config.data) {
-          console.log('Logged in as:', JSON.parse(res.config.data).email);
-          this.setState({
-            loggedIn: true,
-            loggedInUsername: JSON.parse(res.config.data).email
-          });
-        }
-      })
-      .catch(
-        (error => {
-          console.log(this);
-          this.setState({
-            loginError: true
-          });
-        })()
-      );
+      .then(() => this.refreshSession())
+      .catch(() => {
+        this.setState({
+          loginError: true,
+        });
+      });
   }
 
   logout() {
-    axios.get('/logout')
-      .then(res => {
-        console.log('Logging out');
-        this.setState({
-          loggedIn: false,
-          loggedInUsername: '',
-          loginError: false
-        });
-      })
+    api.post('/logout')
+      .finally(() => this.refreshSession());
   }
-  // ────────────────────────────────────────────────────────────────────────────────
 
+  updateZipDraft(e) {
+    this.setState({
+      zipDraft: e.target.value,
+      zipError: false,
+    });
+  }
+
+  saveZip() {
+    if (!(/^\d{5}$/).test(this.state.zipDraft)) {
+      this.setState({ zipError: true });
+      return;
+    }
+    api.post('/api/profile/zip', { zip: this.state.zipDraft })
+      .then(() => this.refreshSession())
+      .catch(() => this.setState({ zipError: true }));
+  }
 
   render() {
-    let room = this.state.loggedInUsername
-      ? <Route path="/rooms/:roomID" render={(props) => <Room username={this.state.loggedInUsername} {...props} />} />
-      : <Route path="/rooms/:roomID" component={Room} />
+    const zipPrompt = this.state.loggedIn && this.state.needsZip ? (
+      <section className="section">
+        <div className="container">
+          <div className="notification">
+            <p className="title is-5">Add your home zip code</p>
+            <p>Google sign-in does not include a zip code. Save one so your profile is complete.</p>
+            <div className="field has-addons" style={{ marginTop: '12px' }}>
+              <div className="control">
+                <input
+                  className={this.state.zipError ? 'input is-danger' : 'input'}
+                  placeholder="78701"
+                  value={this.state.zipDraft}
+                  onChange={this.updateZipDraft.bind(this)}
+                />
+              </div>
+              <div className="control">
+                <button className="button is-primary" onClick={this.saveZip.bind(this)}>
+                  Save zip
+                </button>
+              </div>
+            </div>
+            {this.state.zipError ? (
+              <p className="help is-danger">Enter a 5-digit zip code.</p>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    ) : null;
+
     return (
       <BrowserRouter>
         <div>
-          <div>
-            <Navbar
-              login={this.login.bind(this)}
-              logout={this.logout.bind(this)}
-              subscribe={this.subscribe.bind(this)}
-              loggedIn={this.state.loggedIn}
-              username={this.state.loggedInUsername}
-              error={this.state.loginError}
-              subscribeError={this.state.subscribeError}
-              googleEnabled={this.state.googleEnabled}
-              googleSignInMessage={this.state.googleSignInMessage} />
-          </div >
-          <Route exact path="/" render={
-            (props) => <MainView
-              searchUsers={this.searchUsers.bind(this)}
-              searchedUsers={this.state.searchedUsers}
-              loggedIn={this.state.loggedIn}
-              loggedInUser={this.state.loggedInUsername}
-              {...props} />} />
-          <Route path="/signup" render={
-            (props) => <SignupPage
-              subscribe={this.subscribe.bind(this)}
-              googleEnabled={this.state.googleEnabled}
-              {...props} />} />
-          {room}
+          <Navbar
+            login={this.login.bind(this)}
+            logout={this.logout.bind(this)}
+            subscribe={this.subscribe.bind(this)}
+            loggedIn={this.state.loggedIn}
+            username={this.state.loggedInUsername}
+            error={this.state.loginError}
+            subscribeError={this.state.subscribeError}
+            googleEnabled={this.state.googleEnabled}
+            googleSignInMessage={this.state.googleSignInMessage}
+          />
+          {zipPrompt}
+          <Suspense fallback={<div className="section">Loading...</div>}>
+            <Route exact path="/" render={
+              (props) => <MainView
+                searchUsers={this.searchUsers.bind(this)}
+                searchedUsers={this.state.searchedUsers}
+                loggedIn={this.state.loggedIn}
+                loggedInUser={this.state.loggedInUsername}
+                {...props} />} />
+            <Route path="/signup" render={
+              (props) => <SignupPage
+                subscribe={this.subscribe.bind(this)}
+                subscribeError={this.state.subscribeError}
+                googleEnabled={this.state.googleEnabled}
+                {...props} />} />
+            <Route path="/rooms/:roomID" render={
+              (props) => <Room username={this.state.loggedInUsername} {...props} />} />
+          </Suspense>
         </div>
       </BrowserRouter>
     );

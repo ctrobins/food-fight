@@ -9,10 +9,10 @@ module.exports = (sequelize, DataTypes) => {
 
   RestaurantUser.associate = (models) => {
     RestaurantUser.belongsTo(models.Restaurant, {
-      through: models.RestaurantUser,
+      foreignKey: 'restaurantId',
     });
     RestaurantUser.belongsTo(models.User, {
-      through: models.RestaurantUser,
+      foreignKey: 'userId',
     });
   };
 

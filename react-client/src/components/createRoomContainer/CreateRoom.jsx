@@ -1,8 +1,7 @@
 import React from 'react';
-import $ from 'jquery';
-// import uniqueString from 'unique-string';
 import CombatantsContainer from './CombatantsContainer.jsx';
 import { withRouter } from 'react-router-dom';
+import api from '../../api';
 
 class CreateRoom extends React.Component {
   constructor(props) {
@@ -15,6 +14,7 @@ class CreateRoom extends React.Component {
 
       zipValid: false,
       error: false,
+      serverError: '',
 
       roomLink: ''
     };
@@ -27,39 +27,46 @@ class CreateRoom extends React.Component {
       this.props.combatants.length === 0) {
       this.setState({
         error: true,
+        serverError: '',
       });
     } else {
-      $.post(
-        '/api/save',
-        {
-          roomName: this.state.roomName,
-          zip: this.state.zipCode,
-          members: this.props.combatants
-        },
-        (roomInfo, status) => {
-          console.log('ROOMINFO', roomInfo);
-          console.log(`Room ${this.state.roomName} saved to the database:`, status);
+      api.post('/api/save', {
+        roomName: this.state.roomName,
+        zip: this.state.zipCode,
+        members: this.props.combatants,
+      })
+        .then((res) => {
+          const roomInfo = res.data;
           this.sendRoomEmail(roomInfo, this.props.combatants);
           this.setState({
-            roomLink: roomInfo.uniqueid
+            roomLink: roomInfo.uniqueid,
+            serverError: '',
           }, () => {
-            this.props.history.push(`/rooms/${roomInfo.uniqueid}`)
+            this.props.history.push(`/rooms/${roomInfo.uniqueid}`);
           });
-        },
-      )
+        })
+        .catch((err) => {
+          const data = err.response && err.response.data;
+          let serverError = 'Could not create the room.';
+          if (data && data.missing && data.missing.length) {
+            serverError = `These emails do not have accounts yet: ${data.missing.join(', ')}. Invite them to sign up first.`;
+          } else if (data && data.error) {
+            serverError = data.error;
+          }
+          this.setState({
+            error: true,
+            serverError,
+          });
+        });
     }
   }
 
   sendRoomEmail(roomInfo, members) {
     members.forEach(email => {
-      $.post('/api/roomEmail',
-        {
-          email: email,
-          roomInfo: roomInfo
-        },
-        (data, status) => {
-          console.log('Room emails sent!', status);
-        });
+      api.post('/api/roomEmail', {
+        email: email,
+        roomInfo: roomInfo,
+      });
     });
   }
 
@@ -128,7 +135,7 @@ class CreateRoom extends React.Component {
           <section className="section login-error" style={{ color: 'white' }}>
             <div className="container">
               <h2 className="subtitle">
-                You must have a name, the zip must be valid and the arena must have combatants.
+                {this.state.serverError || 'You must have a name, the zip must be valid and the arena must have combatants.'}
               </h2>
             </div>
           </section>

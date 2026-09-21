@@ -1,6 +1,6 @@
 import React from 'react';
-import $ from 'jquery';
 import RestaurantListItem from './RestaurantListItem.jsx';
+import api from '../api';
 
 class RestaurantList extends React.Component {
   constructor(props) {
@@ -11,14 +11,14 @@ class RestaurantList extends React.Component {
     };
   }
   searchYelp() {
-    $.post('/api/search', { zip: this.props.zipcode }, (data, status) => {
-      console.log(`Requested Yelp search for ${this.props.zipcode}:`, status);
-      if (data.businesses) {
-        this.setState({
-          restaurants: data.businesses,
-        });
-      }
-    });
+    api.post('/api/search', { zip: this.props.zipcode })
+      .then((res) => {
+        if (res.data.businesses) {
+          this.setState({
+            restaurants: res.data.businesses,
+          });
+        }
+      });
   }
 
   componentDidMount() {

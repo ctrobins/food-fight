@@ -1,6 +1,6 @@
 import React from 'react';
-import $ from 'jquery';
 import validator from 'validator';
+import api from '../../../api';
 
 
 class InviteUsers extends React.Component {
@@ -28,10 +28,7 @@ class InviteUsers extends React.Component {
   }
 
   sendInvite(email) {
-    $.post('/api/signupEmail', { email: email },
-      (data, status) => {
-        console.log(`Email sent to ${email}:`, status);
-      });
+    api.post('/api/signupEmail', { email: email });
     this.setState({
       input: ''
     });

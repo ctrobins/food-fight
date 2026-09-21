@@ -3,6 +3,7 @@ module.exports = (sequelize, DataTypes) => {
     email: {
       type: DataTypes.STRING,
       allowNull: false,
+      unique: true,
       validate: {
         isEmail: true,
       },
@@ -13,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     zipcode: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
   });
 
@@ -21,6 +22,11 @@ module.exports = (sequelize, DataTypes) => {
     User.belongsToMany(models.Room, {
       through: 'room_users',
       foreignKey: 'user_id',
+    });
+    User.belongsToMany(models.Restaurant, {
+      through: models.RestaurantUser,
+      foreignKey: 'userId',
+      otherKey: 'restaurantId',
     });
   };
 

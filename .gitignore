@@ -10,7 +10,12 @@ yarn-error.log*
 
 .DS_Store
 .vscode
-bundle.js
+
+# Webpack output. index.html and assets/ are the only dist files we keep.
+react-client/dist/*
+!react-client/dist/index.html
+!react-client/dist/assets/
+!react-client/dist/assets/**
 # Runtime data
 pids
 *.pid

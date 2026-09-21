@@ -120,6 +120,9 @@ class SignupPage extends React.Component {
           <div className="tile is-child notification">
             <p className="title">Sign Up!</p>
             <div className="is-divider" />
+            {this.props.subscribeError ? (
+              <p className="help is-danger">An account with that email already exists.</p>
+            ) : null}
             <div className="field">
               <label className="label">Email</label>
               <div className="control has-icons-left">
