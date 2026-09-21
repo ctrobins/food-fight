@@ -29,8 +29,8 @@ class Room extends React.Component {
     this.voteApprove = this.voteApprove.bind(this);
     this.voteVeto = this.voteVeto.bind(this);
 
-    //Client-side socket events
-    this.socket = io.connect();
+    // Same-origin Socket.io (Express attaches io to the HTTP server)
+    this.socket = io();
     this.socket.emit('join', this.roomID);
 
     this.socket.on('chat', message => {
@@ -86,9 +86,10 @@ class Room extends React.Component {
     this.getMessages();
     this.getRoomInfo();
     this.getVotes();
-    $.get(`/api/port/`).then(port=> {
-      this.setSockets(port);
-    });
+  }
+
+  componentWillUnmount() {
+    this.socket.disconnect();
   }
 
   getMessages() {

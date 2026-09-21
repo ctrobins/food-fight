@@ -313,11 +313,6 @@ app.get('/api/votes/:roomID', (req, res) => {
   });
 });
 
-app.get('/api/port', (req, res) => {
-  res.send(process.env.PORT);
-});
-
-
 // ────────────────────────────────────────────────────────────────────────────────
 
 
