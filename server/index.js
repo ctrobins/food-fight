@@ -331,32 +331,67 @@ db.models.sequelize.sync().then(() => {
   });
 
   const io = socket(server);
+
+  const isValidRoomId = (roomID) => typeof roomID === 'string' && roomID.length > 0;
+
+  const socketIsInRoom = (socket, roomID) => socket.rooms.has(roomID);
+
   io.on('connection', (newSocket) => {
     console.log('made socket connection', newSocket.id);
 
+    newSocket.on('join', (roomID) => {
+      if (!isValidRoomId(roomID)) {
+        console.log('Ignored join: invalid roomID', roomID);
+        return;
+      }
+      newSocket.join(roomID, (err) => {
+        if (err) {
+          console.log('Error joining room', roomID, err);
+          return;
+        }
+        console.log('Socket', newSocket.id, 'joined room', roomID);
+        newSocket.to(roomID).emit('join', roomID);
+      });
+    });
+
     newSocket.on('chat', (data) => {
+      const { roomID } = data || {};
+      if (!isValidRoomId(roomID) || !socketIsInRoom(newSocket, roomID)) {
+        console.log('Ignored chat: socket not in room', roomID);
+        return;
+      }
       console.log('Received chat!', data);
-      io.sockets.emit('chat', data);
+      io.to(roomID).emit('chat', data);
     });
 
     newSocket.on('nominate', (data) => {
+      const { roomID } = data || {};
+      if (!isValidRoomId(roomID) || !socketIsInRoom(newSocket, roomID)) {
+        console.log('Ignored nominate: socket not in room', roomID);
+        return;
+      }
       console.log('Nomination received!', data);
-      io.sockets.emit('nominate', data);
+      io.to(roomID).emit('nominate', data);
     });
 
     newSocket.on('vote', (data) => {
+      const { roomID } = data || {};
+      if (!isValidRoomId(roomID) || !socketIsInRoom(newSocket, roomID)) {
+        console.log('Ignored vote: socket not in room', roomID);
+        return;
+      }
       console.log('Received vote!', data);
-      io.sockets.emit('vote', data.roomID);
+      io.to(roomID).emit('vote', roomID);
     });
 
     newSocket.on('veto', (data) => {
+      const { roomID } = data || {};
+      if (!isValidRoomId(roomID) || !socketIsInRoom(newSocket, roomID)) {
+        console.log('Ignored veto: socket not in room', roomID);
+        return;
+      }
       console.log('Received veto!', data);
-      io.sockets.emit('veto', data.roomID);
-    });
-
-    newSocket.on('join', (roomID) => {
-      console.log('Received new member!', roomID);
-      io.sockets.emit('join', roomID);
+      io.to(roomID).emit('veto', roomID);
     });
   });
 }).catch((err) => {
