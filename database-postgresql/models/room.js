@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     zipcode: {
-      type: DataTypes.INTEGER(6),
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
   });

@@ -4,37 +4,40 @@ const Sequelize = require('sequelize');
 
 const { Op } = Sequelize;
 
-// set up connection and create sequelize instance
-const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  dialect: 'postgres',
-  operatorsAliases: false,
-  logging: false,
-  dialectOptions: {
-    ssl: true,
-  },
-});
+const dialectOptions = {};
+if (process.env.DB_SSL === 'true') {
+  dialectOptions.ssl = { require: true, rejectUnauthorized: false };
+}
 
-// testing connection
+const sequelize = new Sequelize(
+  process.env.DB_NAME || 'foodfight',
+  process.env.DB_USER || 'foodfight',
+  process.env.DB_PASSWORD || 'foodfight',
+  {
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT) || 5432,
+    dialect: 'postgres',
+    logging: false,
+    dialectOptions,
+  },
+);
+
 sequelize.authenticate()
   .then(() => {
     console.log('Connection has been established successfully.');
   })
   .catch((err) => {
-    console.log('Unable to connect to the database:', err);
+    console.log('Unable to connect to the database:', err.message);
   });
 
-// create a models object and import all of our database tables
 const models = {
-  User: sequelize.import('./user'),
-  Room: sequelize.import('./room'),
-  Restaurant: sequelize.import('./restaurant'),
-  Message: sequelize.import('./message'),
-  RestaurantUser: sequelize.import('./restaurantUser'),
+  User: require('./user')(sequelize, Sequelize.DataTypes),
+  Room: require('./room')(sequelize, Sequelize.DataTypes),
+  Restaurant: require('./restaurant')(sequelize, Sequelize.DataTypes),
+  Message: require('./message')(sequelize, Sequelize.DataTypes),
+  RestaurantUser: require('./restaurantUser')(sequelize, Sequelize.DataTypes),
 };
 
-// create relationships between all the tables that have associations
 Object.keys(models).forEach((modelName) => {
   if ('associate' in models[modelName]) {
     models[modelName].associate(models);

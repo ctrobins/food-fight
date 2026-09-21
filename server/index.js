@@ -4,17 +4,20 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const session = require('express-session');
-const request = require('request');
+const axios = require('axios');
 const passport = require('passport');
 const flash = require('flash');
 const auth = require('../lib/auth');
 const morgan = require('morgan');
 const socket = require('socket.io');
 
-const Mailjet = require('node-mailjet').connect(
-  process.env.MAILJET_API_KEY,
-  process.env.MAILJET_API_SECRET,
-);
+const mailjetConfigured = process.env.MAILJET_API_KEY && process.env.MAILJET_API_SECRET;
+const Mailjet = mailjetConfigured
+  ? require('node-mailjet').apiConnect(
+    process.env.MAILJET_API_KEY,
+    process.env.MAILJET_API_SECRET,
+  )
+  : null;
 
 const db = require('../database-postgresql/models/index');
 const dbHelpers = require('../db-controllers');
@@ -25,7 +28,7 @@ const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(`${__dirname}/../react-client/dist`));
+app.use(express.static(path.join(__dirname, '../react-client/dist')));
 app.use(morgan('dev'));
 
 
@@ -33,7 +36,7 @@ app.use(morgan('dev'));
 // ─── AUTHENTICAITON MIDDLEWARE ──────────────────────────────────────────────────
 //
 app.use(session({
-  secret: 'keyboard cat',
+  secret: process.env.SESSION_SECRET || 'keyboard cat',
   resave: false,
   saveUninitialized: true,
   cookie: {
@@ -42,32 +45,29 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
-auth.passportHelper(passport);
+auth.passportHelper();
 app.use(flash());
-
-// app.use((req, res, next) => {
-//   console.log(req.session);
-//   next();
-// });
 
 
 //
 // ─── GOOGLE OAUTH ENDPOINTS ─────────────────────────────────────────────────────
 //
-app.get(
-  '/auth/google',
-  passport.authenticate('google', {
-    scope: ['https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile'],
-  }),
-);
+if (process.env.GOOGLE_AUTH_CLIENT_ID && process.env.GOOGLE_AUTH_CLIENT_SECRET) {
+  app.get(
+    '/auth/google',
+    passport.authenticate('google', {
+      scope: ['profile', 'email'],
+    }),
+  );
 
-app.get(
-  '/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  (req, res) => {
-    res.redirect('/');
-  },
-);
+  app.get(
+    '/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    (req, res) => {
+      res.redirect('/');
+    },
+  );
+}
 
 
 //
@@ -89,9 +89,13 @@ app.post('/login', passport.authenticate('local-login', {
   failureFlash: true,
 }));
 
-app.get('/logout', (req, res) => {
-  req.logout();
-  res.redirect('/');
+app.get('/logout', (req, res, next) => {
+  req.logout((err) => {
+    if (err) {
+      return next(err);
+    }
+    return res.redirect('/');
+  });
 });
 
 
@@ -99,17 +103,21 @@ app.get('/logout', (req, res) => {
 // ─── USER SEARCH AND INVITE ─────────────────────────────────────────────────────
 //
 app.post('/searchUsers', (req, res) => {
-  console.log(req.body.query);
+  const query = (req.body.query || '').trim();
+  if (!query) {
+    res.status(200).send([]);
+    return;
+  }
   db.models.User.findAll({
     limit: 10,
     where: {
       email: {
-        [Op.regexp]: req.body.query,
+        [Op.iLike]: `%${query}%`,
       },
     },
   })
-    .then(matches => res.status(200).send(matches))
-    .catch(err => res.status(200).send(err));
+    .then((matches) => res.status(200).send(matches))
+    .catch((err) => res.status(500).send(err.message));
 });
 
 
@@ -117,6 +125,11 @@ app.post('/searchUsers', (req, res) => {
 // ─── SERVE EMAIL INVITATIONS ────────────────────────────────────────────────────
 //
 app.post('/api/signupEmail', (req, res) => {
+  if (!Mailjet) {
+    console.log('Mailjet not configured; would invite', req.body.email);
+    res.end('Email skipped (Mailjet not configured)');
+    return;
+  }
   console.log('Received request to send email to', req.body.email);
   const { email } = req.body;
   const emailData = {
@@ -126,8 +139,8 @@ app.post('/api/signupEmail', (req, res) => {
     'Text-part': `You've been invited to a Food Fight. Visit ${process.env.DOMAIN || 'http://localhost:3000/'}signup to signup.`,
     Recipients: [{ Email: email }],
   };
-  Mailjet.post('send')
-    .request(emailData)
+  Mailjet.post('send', { version: 'v3.1' })
+    .request({ Messages: [{ ...emailData }] })
     .then(() => {
       res.end('Email sent!');
     })
@@ -138,6 +151,11 @@ app.post('/api/signupEmail', (req, res) => {
 });
 
 app.post('/api/roomEmail', (req, res) => {
+  if (!Mailjet) {
+    console.log('Mailjet not configured; would send room invite', req.body);
+    res.end('Email skipped (Mailjet not configured)');
+    return;
+  }
   console.log('Received request to send email to', req.body);
   const { email, roomInfo } = req.body;
   const emailData = {
@@ -147,8 +165,8 @@ app.post('/api/roomEmail', (req, res) => {
     'Text-part': `You've been invited to a Food Fight room. Visit ${process.env.DOMAIN || 'http://localhost:3000/'}rooms/${roomInfo.uniqueid} to join.`,
     Recipients: [{ Email: email }],
   };
-  Mailjet.post('send')
-    .request(emailData)
+  Mailjet.post('send', { version: 'v3.1' })
+    .request({ Messages: [{ ...emailData }] })
     .then(() => {
       res.end('Email sent!');
     })
@@ -163,11 +181,11 @@ app.post('/api/roomEmail', (req, res) => {
 // ─── CREATE ROOMS AND GET ROOM INFO ─────────────────────────────────────────────
 //
 app.post('/api/save', (req, res) => {
-  // console.log('NEW ROOM DATA', req.body);
   const { roomName, zip, members } = req.body;
-  dbHelpers.saveRoomAndMembers(roomName, zip, members, (err, room, users) => {
+  dbHelpers.saveRoomAndMembers(roomName, zip, members, (err, room) => {
     if (err) {
       console.log('Error saving room and members', err);
+      res.status(500).end();
     } else {
       res.send(room[0].dataValues);
     }
@@ -179,6 +197,7 @@ app.get('/api/rooms/:roomID', (req, res) => {
   dbHelpers.getRoomMembers(roomID, (err, roomMembers) => {
     if (err) {
       console.log('Error getting room members', err);
+      res.status(500).end();
     } else {
       res.send(roomMembers);
     }
@@ -194,26 +213,27 @@ app.post('/room-redirect', (req, res) => {
 //
 // ─── EXTERNAL API LOGIC ─────────────────────────────────────────────────────────
 //
-app.post('/api/search', (req, res) => {
+app.post('/api/search', async (req, res) => {
   console.log('Received request for Yelp search of', req.body);
   const { zip } = req.body;
-  const options = {
-    method: 'GET',
-    uri: 'https://api.yelp.com/v3/businesses/search',
-    headers: {
-      Authorization: process.env.YELP_API_KEY,
-    },
-    qs: {
-      location: zip,
-    },
-  };
-  request(options, (err, data) => {
-    if (err) {
-      console.log('Error in interacting with the Yelp API', err);
-      res.status(404).end();
-    }
-    res.send(JSON.parse(data.body));
-  });
+  if (!process.env.YELP_API_KEY) {
+    res.status(503).json({ error: 'Yelp API key not configured', businesses: [] });
+    return;
+  }
+  try {
+    const { data } = await axios.get('https://api.yelp.com/v3/businesses/search', {
+      headers: {
+        Authorization: `Bearer ${process.env.YELP_API_KEY}`,
+      },
+      params: {
+        location: zip,
+      },
+    });
+    res.send(data);
+  } catch (err) {
+    console.log('Error in interacting with the Yelp API', err.message);
+    res.status(404).end();
+  }
 });
 
 
@@ -250,6 +270,7 @@ app.post('/api/nominate', (req, res) => {
   dbHelpers.saveRestaurant(name, roomID, (err, restaurant) => {
     if (err) {
       console.log('Error saving restaurant', err);
+      res.status(500).end();
     } else {
       res.end('Restaurant saved!', restaurant);
     }
@@ -261,6 +282,7 @@ app.post('/api/votes', (req, res) => {
   dbHelpers.updateVotes(name, roomID, (err, restaurant) => {
     if (err) {
       console.log('Error upvoting restaurant', err);
+      res.status(500).end();
     } else {
       res.end('Restaurant upvoted!', restaurant);
     }
@@ -272,6 +294,7 @@ app.post('/api/vetoes', (req, res) => {
   dbHelpers.updateVetoes(name, roomID, (err, restaurant) => {
     if (err) {
       console.log('Error vetoing restaurant', err);
+      res.status(500).end();
     } else {
       res.end('Restaurant vetoed!', restaurant);
     }
@@ -283,6 +306,7 @@ app.get('/api/votes/:roomID', (req, res) => {
   dbHelpers.getScoreboard(roomID, (err, scores) => {
     if (err) {
       console.log('Error fetching scoreboard', err);
+      res.status(500).end();
     } else {
       res.send(scores);
     }
@@ -291,25 +315,21 @@ app.get('/api/votes/:roomID', (req, res) => {
 
 app.get('/api/port', (req, res) => {
   res.send(process.env.PORT);
-})
+});
 
 
 // ────────────────────────────────────────────────────────────────────────────────
 
 
-// Sets up default case so that any URL not handled by the Express Router
-// will be handled by the React Router
 app.get('*', (req, res) => {
-  res.sendFile(path.join(`${__dirname}/../react-client/dist/index.html`));
+  res.sendFile(path.join(__dirname, '../react-client/dist/index.html'));
 });
 
-// create the tables based on the models and once done, listen on the given port
 db.models.sequelize.sync().then(() => {
   const server = app.listen(process.env.PORT || 3000, () => {
     console.log('listening on port', process.env.PORT || 3000);
   });
 
-  // Server-side socket events
   const io = socket(server);
   io.on('connection', (newSocket) => {
     console.log('made socket connection', newSocket.id);
@@ -339,5 +359,7 @@ db.models.sequelize.sync().then(() => {
       io.sockets.emit('join', roomID);
     });
   });
+}).catch((err) => {
+  console.error('Failed to sync database:', err.message);
+  process.exit(1);
 });
-

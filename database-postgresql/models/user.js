@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     zipcode: {
-      type: DataTypes.INTEGER(6),
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
   });

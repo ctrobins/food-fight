@@ -1,32 +1,31 @@
 const path = require('path');
 
-const SRC_DIR = path.join(__dirname, '/react-client/src');
-const DIST_DIR = path.join(__dirname, '/react-client/dist');
-const ExtractTextPlugin = require('extract-text-webpack-plugin');
+const SRC_DIR = path.join(__dirname, 'react-client/src');
+const DIST_DIR = path.join(__dirname, 'react-client/dist');
 
-const extractPlugin = new ExtractTextPlugin({
-  filename: 'bundle.css',
-});
-
-module.exports = {
-  entry: `${SRC_DIR}/index.jsx`,
+module.exports = (_env, argv) => ({
+  entry: path.join(SRC_DIR, 'index.jsx'),
   output: {
     filename: 'bundle.js',
     path: DIST_DIR,
+    publicPath: '/',
   },
+  mode: argv.mode || 'development',
+  devtool: argv.mode === 'production' ? false : 'source-map',
   module: {
-    loaders: [{
-      test: /\.jsx?/,
-      include: SRC_DIR,
-      loader: 'babel-loader',
-      query: {
-        presets: ['react', 'es2015'],
+    rules: [
+      {
+        test: /\.jsx?$/,
+        include: SRC_DIR,
+        use: 'babel-loader',
       },
-    },
-    {
-      test: /\.(s*)css$/,
-      use: ['style-loader', 'css-loader', 'sass-loader'],
-    },
+      {
+        test: /\.(s*)css$/,
+        use: ['style-loader', 'css-loader', 'sass-loader'],
+      },
     ],
   },
-};
+  resolve: {
+    extensions: ['.js', '.jsx'],
+  },
+});

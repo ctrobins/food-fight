@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: foodfight
+      POSTGRES_PASSWORD: foodfight
+      POSTGRES_DB: foodfight
+    ports:
+      - "5432:5432"
+    volumes:
+      - foodfight_pg:/var/lib/postgresql/data
+
+volumes:
+  foodfight_pg:
