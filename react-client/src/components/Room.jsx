@@ -149,7 +149,7 @@ class Room extends React.Component {
         });
       }
       // A user who nominates a restaurant should automatically vote for it
-      this.voteApprove();
+      this.voteApprove(restaurant);
     }
   }
 
@@ -179,12 +179,16 @@ class Room extends React.Component {
     });
   }
 
-  voteApprove() {
+  voteApprove(restaurant) {
     /* TO DO: Check if a user has already voted for
     the given restaurant to prevent duplicate votes */
+    const selection = restaurant ?? this.state.currentSelection;
+    if (!selection?.name) {
+      return;
+    }
     let voteObj = {
       voter: this.state.loggedInUsername,
-      name: this.state.currentSelection.name,
+      name: selection.name,
       roomID: this.roomID,
     };
     $.post('/api/votes', voteObj).then(() => {
@@ -196,22 +200,24 @@ class Room extends React.Component {
   }
 
   voteVeto() {
+    const selection = this.state.currentSelection;
+    if (!selection?.name) {
+      return;
+    }
+    const voteObj = {
+      name: selection.name,
+      roomID: this.roomID,
+    };
     this.setState({
       isNominating: true,
+      currentSelection: undefined,
     });
-    if (this.state.currentSelection) {
-      let voteObj = {
-        name: this.state.currentSelection.name,
-        roomID: this.roomID,
-      };
-      $.post('/api/vetoes', voteObj).then(() => {
-        this.setState({
-          currentSelection: undefined,
-          hasVoted: true,
-        });
-        this.socket.emit('veto', voteObj);
+    $.post('/api/vetoes', voteObj).then(() => {
+      this.setState({
+        hasVoted: true,
       });
-    }
+      this.socket.emit('veto', voteObj);
+    });
   }
 
   render() {
@@ -285,7 +291,7 @@ class Room extends React.Component {
                               // <h5 style={{ backgroundColor: restaurant.vetoed ? 'white' : 'lightgrey' }}>
                               //   <strong>{restaurant.name}</strong> {restaurant.votes}
                               // </h5>
-                              <tr className={(restaurant.name === this.state.currentSelection.name) ? 'is-selected' : ''}>
+                              <tr className={(restaurant.name === this.state.currentSelection?.name) ? 'is-selected' : ''}>
                                 <td>{restaurant.name}</td>
                                 <td>{restaurant.votes}</td>
                               </tr>

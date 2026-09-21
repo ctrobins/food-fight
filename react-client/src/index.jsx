@@ -23,12 +23,28 @@ class App extends React.Component {
       loggedIn: false,
       loggedInUsername: '',
       loginError: false,
+      googleEnabled: false,
+      googleSignInMessage: null,
 
       searchedUsers: []
     };
   }
 
   componentDidMount() {
+    const params = new URLSearchParams(window.location.search);
+    const googleSignIn = params.get('googleSignIn');
+    if (googleSignIn === 'unavailable') {
+      this.setState({
+        googleSignInMessage: 'Google sign-in is not configured on this server. Use email and password, or add GOOGLE_AUTH_CLIENT_ID and GOOGLE_AUTH_CLIENT_SECRET to .env.',
+      });
+      window.history.replaceState({}, '', '/');
+    } else if (googleSignIn === 'failed') {
+      this.setState({
+        googleSignInMessage: 'Google sign-in failed. Please try again or use email and password.',
+      });
+      window.history.replaceState({}, '', '/');
+    }
+
     axios.get('/checklogin')
       .then(res => {
         if (res.data.user) {
@@ -39,6 +55,11 @@ class App extends React.Component {
             loginError: false,
           });
         }
+      });
+
+    axios.get('/api/auth/providers')
+      .then(res => {
+        this.setState({ googleEnabled: Boolean(res.data.google) });
       });
   }
 
@@ -150,7 +171,9 @@ class App extends React.Component {
               loggedIn={this.state.loggedIn}
               username={this.state.loggedInUsername}
               error={this.state.loginError}
-              subscribeError={this.state.subscribeError} />
+              subscribeError={this.state.subscribeError}
+              googleEnabled={this.state.googleEnabled}
+              googleSignInMessage={this.state.googleSignInMessage} />
           </div >
           <Route exact path="/" render={
             (props) => <MainView
@@ -162,6 +185,7 @@ class App extends React.Component {
           <Route path="/signup" render={
             (props) => <SignupPage
               subscribe={this.subscribe.bind(this)}
+              googleEnabled={this.state.googleEnabled}
               {...props} />} />
           {room}
         </div>

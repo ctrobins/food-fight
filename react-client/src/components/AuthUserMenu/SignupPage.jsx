@@ -85,12 +85,9 @@ class SignupPage extends React.Component {
           </p>
     );
 
-    // Link only active if
-
-    return (
-      <div className="columns tile is-ancestor">
-        <div className="column is-1"></div>
-        <div id="google-login-container" className="column is-2">
+    const googleSignup = this.props.googleEnabled ? (
+      [
+        <div id="google-login-container" className="column is-2" key="google">
           <div id="google-login-card" className="card">
             <header className="card-header">
               <p className="card-header-title">
@@ -100,7 +97,7 @@ class SignupPage extends React.Component {
             <div className="card-content">
               <div id="google-login-content" className="content">
                 <figure className="image is-128x128">
-                  <img src="https://image.flaticon.com/icons/svg/270/270014.svg" />
+                  <img src="https://image.flaticon.com/icons/svg/270/270014.svg" alt="" />
                 </figure>
               </div>
             </div>
@@ -108,10 +105,17 @@ class SignupPage extends React.Component {
               <a href="/auth/google" className="card-footer-item">Login</a>
             </footer>
           </div>
-        </div>
-        <div id="signup-or-container" className="column is-2">
+        </div>,
+        <div id="signup-or-container" className="column is-2" key="or">
           <p id="signup-or" className="title">OR</p>
-        </div>
+        </div>,
+      ]
+    ) : null;
+
+    return (
+      <div className="columns tile is-ancestor">
+        <div className="column is-1"></div>
+        {googleSignup}
         <div className="column is-6 tile is-parent is-vertical">
           <div className="tile is-child notification">
             <p className="title">Sign Up!</p>

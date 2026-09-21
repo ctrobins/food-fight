@@ -17,7 +17,9 @@ class Navbar extends React.Component {
         [<div className="control" key="1">
           <LoginDialog
             login={this.props.login}
-            error={this.props.error} />
+            error={this.props.error}
+            googleEnabled={this.props.googleEnabled}
+            googleSignInMessage={this.props.googleSignInMessage} />
         </div>,
         <div className="control" key="2">
           <SubscribeDialog

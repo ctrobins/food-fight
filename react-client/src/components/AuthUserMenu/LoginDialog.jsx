@@ -70,6 +70,26 @@ class LoginDialog extends React.Component {
       </section>
     ) : null;
 
+    const googleSignInMessage = this.props.googleSignInMessage ? (
+      <div className="notification is-warning">
+        {this.props.googleSignInMessage}
+      </div>
+    ) : null;
+
+    const googleLogin = this.props.googleEnabled ? (
+      <div className="google-button-container">
+        <a href="/auth/google">
+          <button
+            type="button"
+            className="loginBtn loginBtn--google">
+            Login with Google
+          </button>
+        </a>
+      </div>
+    ) : (
+      <p className="help">Google sign-in is not available on this server.</p>
+    );
+
     return (
       <div>
         <a className="button is-primary" onClick={this.handleClickOpen}>
@@ -89,15 +109,9 @@ class LoginDialog extends React.Component {
               ></button>
             </header>
             <section className="modal-card-body">
-              <div className="google-button-container">
-                <a href="/auth/google">
-                  <button
-                    className="loginBtn loginBtn--google">
-                    Login with Google
-                </button>
-                </a>
-              </div>
-              <hr />
+              {googleSignInMessage}
+              {googleLogin}
+              {this.props.googleEnabled ? <hr /> : null}
               {loginError}
               <div className="field">
                 <label className="label">Email</label>

@@ -24,11 +24,14 @@ const dbHelpers = require('../db-controllers');
 
 const { Op } = db;
 
+const isGoogleOAuthConfigured = () => (
+  Boolean(process.env.GOOGLE_AUTH_CLIENT_ID && process.env.GOOGLE_AUTH_CLIENT_SECRET)
+);
+
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, '../react-client/dist')));
 app.use(morgan('dev'));
 
 
@@ -52,22 +55,35 @@ app.use(flash());
 //
 // ─── GOOGLE OAUTH ENDPOINTS ─────────────────────────────────────────────────────
 //
-if (process.env.GOOGLE_AUTH_CLIENT_ID && process.env.GOOGLE_AUTH_CLIENT_SECRET) {
-  app.get(
-    '/auth/google',
-    passport.authenticate('google', {
-      scope: ['profile', 'email'],
-    }),
-  );
+app.get('/api/auth/providers', (req, res) => {
+  res.json({
+    local: true,
+    google: isGoogleOAuthConfigured(),
+  });
+});
 
-  app.get(
-    '/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: '/login' }),
-    (req, res) => {
-      res.redirect('/');
-    },
-  );
-}
+app.get('/auth/google', (req, res, next) => {
+  if (!isGoogleOAuthConfigured()) {
+    res.redirect('/?googleSignIn=unavailable');
+    return;
+  }
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
+
+app.get(
+  '/auth/google/callback',
+  (req, res, next) => {
+    if (!isGoogleOAuthConfigured()) {
+      res.redirect('/?googleSignIn=unavailable');
+      return;
+    }
+    next();
+  },
+  passport.authenticate('google', { failureRedirect: '/?googleSignIn=failed' }),
+  (req, res) => {
+    res.redirect('/');
+  },
+);
 
 
 //
@@ -247,7 +263,7 @@ app.post('/api/messages', (req, res) => {
       console.log('Error saving message', err);
       res.status(404).end();
     } else {
-      res.end('Message saved', savedMessage);
+      res.status(200).send(savedMessage);
     }
   });
 });
@@ -272,7 +288,7 @@ app.post('/api/nominate', (req, res) => {
       console.log('Error saving restaurant', err);
       res.status(500).end();
     } else {
-      res.end('Restaurant saved!', restaurant);
+      res.status(200).send(restaurant);
     }
   });
 });
@@ -284,7 +300,7 @@ app.post('/api/votes', (req, res) => {
       console.log('Error upvoting restaurant', err);
       res.status(500).end();
     } else {
-      res.end('Restaurant upvoted!', restaurant);
+      res.status(200).send(restaurant);
     }
   });
 });
@@ -296,7 +312,7 @@ app.post('/api/vetoes', (req, res) => {
       console.log('Error vetoing restaurant', err);
       res.status(500).end();
     } else {
-      res.end('Restaurant vetoed!', restaurant);
+      res.status(200).send(restaurant);
     }
   });
 });
@@ -315,6 +331,7 @@ app.get('/api/votes/:roomID', (req, res) => {
 
 // ────────────────────────────────────────────────────────────────────────────────
 
+app.use(express.static(path.join(__dirname, '../react-client/dist')));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../react-client/dist/index.html'));
