@@ -49,6 +49,18 @@ class Room extends React.Component {
       }
     });
 
+    this.socket.on('veto', roomID => {
+      if (roomID === this.roomID) {
+        console.log('Received veto');
+        this.setState({
+          isNominating: true,
+          currentSelection: undefined,
+          hasVoted: true,
+        });
+        this.getVotes();
+      }
+    });
+
     this.socket.on('nominate', nominee => {
       if (nominee.roomID === this.roomID) {
         console.log('Received nomination', nominee);
