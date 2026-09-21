@@ -62,7 +62,6 @@ figure.image {
 }
 
 #site-body {
-  height: 800px;
   margin: 10px;
 }
 
@@ -111,10 +110,16 @@ figure.image {
   align-items: center;
 }
 
-#invite-users-footer {
-  position: absolute;
-  bottom: 30px;
-  width: 88%;
+.fighter-panel + .fighter-panel {
+  margin-top: 1rem;
+}
+
+.fighter-help {
+  margin-bottom: 0.75rem;
+}
+
+.fighter-results {
+  margin-top: 0.5rem;
 }
 
 div.columns {
@@ -311,6 +316,24 @@ $font-size: 25px;
 }
 
 /* END GOOGLE LOGIN ICON */
+
+.room-layout {
+  width: 100%;
+}
+
+#yelp-list {
+  width: 100%;
+
+  .Resturant-list-item {
+    width: 100%;
+    cursor: pointer;
+  }
+
+  .media-content {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
 
 // Vote Styling
 #current-resturant {

@@ -311,23 +311,17 @@ class Room extends React.Component {
             </div>
           </div>
         </section>
-        <div className="columns">
-          <div
-            className="tile is-ancestor"
-            style={{ marginTop: '15px' }}>
+        <div className="columns room-layout">
             <div className="column is-6">
-              <div className="tile is-parent">
-                <article className="tile is-child notification">
+                <article className="notification">
                   <div id="yelp-list">
                     <p className="title">Local Resturants</p>
                     {restaurantList}
                   </div>
                 </article>
-              </div>
             </div>
             <div className="column">
-              <div className="tile is-parent is-vertical">
-                <article className="tile is-child notification">
+                <article className="notification">
                   <div id="current-resturant">
                     <p className="title">Current Selection</p>
                     {currentSelection}
@@ -363,7 +357,7 @@ class Room extends React.Component {
                     </div>
                   </div>
                 </article>
-                <article className="tile is-child notification">
+                <article className="notification">
                   <div id="chat">
                     <h4 className="is-size-4">Live Chat</h4>
                     <div>
@@ -399,9 +393,7 @@ class Room extends React.Component {
                     </div>
                   </div>
                 </article>
-              </div>
             </div>
-          </div>
         </div>
       </div>
     );

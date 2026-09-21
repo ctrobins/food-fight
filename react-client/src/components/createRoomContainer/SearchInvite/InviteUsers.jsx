@@ -64,7 +64,8 @@ class InviteUsers extends React.Component {
 
     return (
       <div>
-        <p className="title">Invite New Users</p>
+        <p className="title is-4">Invite New Users</p>
+        <p className="fighter-help">Email someone who does not have an account yet. They will get a link to sign up.</p>
         <div className="field has-addons">
           <div className="control is-expanded">
             <input
