@@ -2,6 +2,28 @@
 @import 'helpers';
 @import url("https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css");
 @import url('https://fonts.googleapis.com/css?family=Kalam:700');
+
+// Bulma 1.x follows OS dark mode unless forced to light
+html {
+  color-scheme: light;
+}
+
+body {
+  background-color: #f5f5f5;
+  color: hsl(0, 0%, 21%);
+}
+
+.input,
+.textarea,
+.select select {
+  background-color: #fff;
+  color: hsl(0, 0%, 21%);
+  border-color: #dbdbdb;
+
+  &::placeholder {
+    color: hsl(0, 0%, 48%);
+  }
+}
 // .create-room-container {
 //     margin-top: 25px;
 //     margin-left: 10px;
@@ -105,6 +127,13 @@ div.columns {
 
 .create-room-container {
   background-color: $grey;
+  color: hsl(0, 0%, 21%);
+
+  .title,
+  .subtitle,
+  .label {
+    color: hsl(0, 0%, 21%);
+  }
 }
 
 .google-button-container {
@@ -123,12 +152,8 @@ div.columns {
   border-radius: 5px;
 }
 
-.subtitle {
-  color: white;
-}
-
 .search-result {
-  border-bottom: 3px solid white;
+  border-bottom: 3px solid $grey-light;
   padding: 10px 0px 10px 0px;
   display: flex;
   justify-content: space-between;
