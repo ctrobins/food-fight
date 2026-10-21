@@ -68,14 +68,16 @@ class App extends React.Component {
             subscribeError: false,
             needsZip: res.data.user.zipcode == null,
           });
-        } else {
-          this.setState({
-            loggedIn: false,
-            loggedInUsername: '',
-            needsZip: false,
-          });
+          return true;
         }
-      });
+        this.setState({
+          loggedIn: false,
+          loggedInUsername: '',
+          needsZip: false,
+        });
+        return false;
+      })
+      .catch(() => false);
   }
 
   searchUsers(query) {
@@ -196,7 +198,14 @@ class App extends React.Component {
                 googleEnabled={this.state.googleEnabled}
                 {...props} />} />
             <Route path="/rooms/:roomID" render={
-              (props) => <Room username={this.state.loggedInUsername} {...props} />} />
+              (props) => (
+                <Room
+                  key={props.match.params.roomID}
+                  username={this.state.loggedInUsername}
+                  onAuthFailure={this.refreshSession.bind(this)}
+                  {...props}
+                />
+              )} />
           </Suspense>
         </div>
       </BrowserRouter>

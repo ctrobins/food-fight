@@ -1,0 +1,91 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  TF_LOCK_TABLE: food-fight-terraform-locks
+
+jobs:
+  deploy:
+    name: Deploy production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-food-fight
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+          terraform_wrapper: false
+
+      - name: Resolve the Terraform state bucket
+        id: backend
+        run: |
+          account=$(aws sts get-caller-identity --query Account --output text)
+          echo "bucket=food-fight-tfstate-${account}" >> "$GITHUB_OUTPUT"
+
+      - name: Terraform init
+        working-directory: terraform
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ steps.backend.outputs.bucket }}" \
+            -backend-config="key=prod/terraform.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${TF_LOCK_TABLE}" \
+            -backend-config="encrypt=true"
+
+      - name: Create the container registry
+        working-directory: terraform
+        run: |
+          terraform apply -input=false -auto-approve \
+            -target=aws_ecr_repository.app \
+            -var="aws_region=${AWS_REGION}" \
+            -var="image_tag=${GITHUB_SHA}"
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the image
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/food-fight:${{ github.sha }}
+        run: |
+          docker build --platform linux/amd64 -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Terraform apply
+        working-directory: terraform
+        env:
+          TF_VAR_aws_region: ${{ env.AWS_REGION }}
+          TF_VAR_image_tag: ${{ github.sha }}
+          TF_VAR_domain_name: ${{ vars.DOMAIN_NAME }}
+          TF_VAR_route53_zone_id: ${{ vars.ROUTE53_ZONE_ID }}
+          TF_VAR_google_auth_client_id: ${{ secrets.GOOGLE_AUTH_CLIENT_ID }}
+          TF_VAR_google_auth_client_secret: ${{ secrets.GOOGLE_AUTH_CLIENT_SECRET }}
+          TF_VAR_gmail_address: ${{ secrets.GMAIL_ADDRESS }}
+          TF_VAR_gmail_password: ${{ secrets.GMAIL_PASSWORD }}
+          TF_VAR_yelp_api_key: ${{ secrets.YELP_API_KEY }}
+          TF_VAR_mailjet_api_key: ${{ secrets.MAILJET_API_KEY }}
+          TF_VAR_mailjet_api_secret: ${{ secrets.MAILJET_API_SECRET }}
+        run: terraform apply -input=false -auto-approve

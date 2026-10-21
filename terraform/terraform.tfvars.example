@@ -1,0 +1,13 @@
+aws_region  = "us-east-2"
+image_tag   = "local"
+domain_name = ""
+route53_zone_id = ""
+
+# Optional integrations. Prefer GitHub Actions secrets over a committed tfvars file.
+# google_auth_client_id     = ""
+# google_auth_client_secret = ""
+# gmail_address             = ""
+# gmail_password            = ""
+# yelp_api_key              = ""
+# mailjet_api_key           = ""
+# mailjet_api_secret        = ""

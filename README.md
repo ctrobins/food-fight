@@ -31,6 +31,10 @@ Without them, the app still runs; those flows are skipped or return a friendly m
 
 ## Deployment
 
+Production runs on AWS. Terraform under `terraform/` creates the network, database, load balancer, and container service. Pushes to `main` deploy through `.github/workflows/deploy.yml`.
+
+The deployment guide, including the one-time bootstrap and every infrastructure choice, is in the **food-fight-docs** repository: [deployment.md](https://github.com/ctrobins/food-fight-docs/blob/main/deployment.md).
+
 Necessary ENV variables:
 
 ```

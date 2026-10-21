@@ -230,13 +230,31 @@ class Room extends React.Component {
     });
   }
 
-  voteApprove(restaurant) {
+  handleAuthFailure(retry) {
+    if (!this.props.onAuthFailure) {
+      this.setState({ voteError: 'Log in to vote.' });
+      return;
+    }
+    this.props.onAuthFailure().then((stillLoggedIn) => {
+      if (stillLoggedIn) {
+        retry();
+        return;
+      }
+      this.setState({ voteError: 'Your session expired. Please log in again.' });
+    });
+  }
+
+  voteApprove(restaurant, isRetry = false) {
     const selection = restaurant && restaurant.name ? restaurant : this.state.currentSelection;
     const restaurantId = this.restaurantIdFor(selection);
     if (!selection || !restaurantId) {
       return;
     }
-    if (this.state.hasVoted) {
+    if (this.state.hasVoted && !isRetry) {
+      return;
+    }
+    if (!this.props.username && !isRetry) {
+      this.setState({ voteError: 'Log in to vote.' });
       return;
     }
     api.post('/api/votes', {
@@ -251,6 +269,10 @@ class Room extends React.Component {
     }).catch((err) => {
       const status = err.response && err.response.status;
       const data = err.response && err.response.data;
+      if (status === 401 && !isRetry) {
+        this.handleAuthFailure(() => this.voteApprove(selection, true));
+        return;
+      }
       this.setState({
         hasVoted: status === 409,
         voteError: (data && data.error) || 'Could not record your vote.',
@@ -258,7 +280,7 @@ class Room extends React.Component {
     });
   }
 
-  voteVeto() {
+  voteVeto(isRetry = false) {
     const selection = this.state.currentSelection;
     const restaurantId = this.restaurantIdFor(selection);
     if (!selection || !restaurantId) {
@@ -269,14 +291,33 @@ class Room extends React.Component {
       currentSelection: undefined,
       hasVoted: false,
     });
+    if (!this.props.username && !isRetry) {
+      this.setState({
+        isNominating: false,
+        currentSelection: selection,
+        voteError: 'Log in to veto.',
+      });
+      return;
+    }
     api.post('/api/vetoes', {
       restaurantId,
       roomID: this.roomID,
     }).then(() => {
       this.socket.emit('veto', { roomID: this.roomID });
     }).catch((err) => {
+      const status = err.response && err.response.status;
       const data = err.response && err.response.data;
+      if (status === 401 && !isRetry) {
+        this.setState({
+          isNominating: false,
+          currentSelection: selection,
+        });
+        this.handleAuthFailure(() => this.voteVeto(true));
+        return;
+      }
       this.setState({
+        isNominating: false,
+        currentSelection: selection,
         voteError: (data && data.error) || 'Could not veto that restaurant.',
       });
     });

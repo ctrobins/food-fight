@@ -23,6 +23,7 @@ const db = require('../database-postgresql/models/index');
 const dbHelpers = require('../db-controllers');
 const { migrate } = require('../database-postgresql/migrate');
 const { publicUser } = require('../lib/auth');
+const { PgSessionStore } = require('../lib/pgSessionStore');
 
 const { Op } = db;
 
@@ -31,6 +32,14 @@ const isGoogleOAuthConfigured = () => (
 );
 
 const app = express();
+
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ ok: true });
+});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -71,14 +80,20 @@ if (!process.env.SESSION_SECRET) {
   process.exit(1);
 }
 
+const cookieSecure = process.env.COOKIE_SECURE
+  ? process.env.COOKIE_SECURE === 'true'
+  : process.env.NODE_ENV === 'production';
+
 app.use(session({
+  store: new PgSessionStore(),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: cookieSecure,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
   },
 }));
 app.use(passport.initialize());
@@ -86,7 +101,7 @@ app.use(passport.session());
 auth.passportHelper();
 app.use((req, res, next) => {
   const stored = req.session && req.session.passport && req.session.passport.user;
-  if (stored && typeof stored === 'object') {
+  if (stored && typeof stored === 'object' && stored.id) {
     req.session.passport.user = stored.id;
   }
   next();
@@ -175,6 +190,7 @@ app.get(
 // ─── LOCAL AUTH ENDPOINTS ───────────────────────────────────────────────────────
 //
 app.get('/checklogin', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.status(200).json({ user: publicUser(req.user) });
 });
 
@@ -418,8 +434,9 @@ app.get('*', (req, res) => {
 });
 
 migrate(db.models.sequelize).then(() => {
-  const server = app.listen(process.env.PORT || 3000, () => {
-    console.log('listening on port', process.env.PORT || 3000);
+  const port = process.env.PORT || 3000;
+  const server = app.listen(port, '0.0.0.0', () => {
+    console.log('listening on port', port);
   });
 
   const io = socket(server);

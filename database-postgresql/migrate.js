@@ -198,9 +198,23 @@ async function integrity(sequelize) {
   `);
 }
 
+async function sessions(sequelize) {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      sid VARCHAR(255) PRIMARY KEY,
+      sess JSONB NOT NULL,
+      expire TIMESTAMPTZ NOT NULL
+    )
+  `);
+  await sequelize.query(
+    'CREATE INDEX IF NOT EXISTS user_sessions_expire_index ON user_sessions (expire)',
+  );
+}
+
 const migrations = [
   { id: '001-baseline', up: baseline },
   { id: '002-integrity', up: integrity },
+  { id: '003-sessions', up: sessions },
 ];
 
 async function migrate(sequelize) {
