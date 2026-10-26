@@ -12,16 +12,9 @@ class UserMenu extends React.Component {
           {this.props.username}
         </a>
         <div className="navbar-dropdown is-boxed">
-          <a className="navbar-item" href="/">
-            Friends
-          </a>
-          <a className="navbar-item" href="/">
-            Favorites
-          </a>
-          <hr className="navbar-divider" />
-          <a className="navbar-item is-active" onClick={this.props.logout}>
+          <button type="button" className="user-menu-logout" onClick={this.props.logout}>
             Logout
-          </a>
+          </button>
         </div>
       </div>
     );

@@ -61,6 +61,26 @@ figure.image {
   padding: 5px 0px 0px 10px;
 }
 
+.user-menu-logout {
+  background: transparent;
+  border: 0;
+  color: hsl(0, 0%, 29%);
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  line-height: 1.5;
+  padding: 0.75rem 1.25rem;
+  text-align: left;
+  width: 100%;
+
+  &:hover,
+  &:focus,
+  &:active {
+    background: transparent;
+    color: hsl(0, 0%, 29%);
+  }
+}
+
 #site-body {
   margin: 10px;
 }
