@@ -16,7 +16,7 @@ const mail = require('../lib/mail');
 const db = require('../database-postgresql/models/index');
 const dbHelpers = require('../db-controllers');
 const { migrate } = require('../database-postgresql/migrate');
-const { publicUser } = require('../lib/auth');
+const { googleCallbackURL, publicUser } = require('../lib/auth');
 const { PgSessionStore } = require('../lib/pgSessionStore');
 
 const { Op } = db;
@@ -157,7 +157,10 @@ app.get('/auth/google', (req, res, next) => {
     res.redirect('/?googleSignIn=unavailable');
     return;
   }
-  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    callbackURL: googleCallbackURL(req),
+  })(req, res, next);
 });
 
 app.get(
@@ -167,9 +170,11 @@ app.get(
       res.redirect('/?googleSignIn=unavailable');
       return;
     }
-    next();
+    passport.authenticate('google', {
+      failureRedirect: '/?googleSignIn=failed',
+      callbackURL: googleCallbackURL(req),
+    })(req, res, next);
   },
-  passport.authenticate('google', { failureRedirect: '/?googleSignIn=failed' }),
   (req, res) => {
     if (req.user && req.user.zipcode == null) {
       res.redirect('/?setZip=1');
