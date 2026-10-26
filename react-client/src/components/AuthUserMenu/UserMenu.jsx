@@ -8,9 +8,9 @@ class UserMenu extends React.Component {
   render() {
     return (
       <div className="navbar-item has-dropdown is-hoverable">
-        <a className="navbar-link" href="/documentation/overview/start/">
+        <span className="navbar-link">
           {this.props.username}
-        </a>
+        </span>
         <div className="navbar-dropdown is-boxed">
           <button type="button" className="user-menu-logout" onClick={this.props.logout}>
             Logout
