@@ -21,7 +21,6 @@ class Room extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      name: '',
       message: '',
       messages: [],
       members: [],
@@ -205,22 +204,29 @@ class Room extends React.Component {
     });
   }
 
-  sendMessage() {
-    const messageObj = {
-      message: {
-        name: this.state.name,
-        message: this.state.message,
-      },
+  sendMessage(isRetry = false) {
+    const text = this.state.message;
+    if (!this.props.username && !isRetry) {
+      return;
+    }
+    api.post('/api/messages', {
+      message: { message: text },
       roomID: this.roomID,
-    };
-    api.post('/api/messages', messageObj).then(() => {
-      this.socket.emit('chat', messageObj);
-    });
-  }
-
-  updateName(e) {
-    this.setState({
-      name: e.target.value,
+    }).then((res) => {
+      const saved = res.data || {};
+      this.socket.emit('chat', {
+        message: {
+          name: saved.name || this.props.username || '',
+          message: typeof saved.message === 'string' ? saved.message : text,
+        },
+        roomID: this.roomID,
+      });
+      this.setState({ message: '' });
+    }).catch((err) => {
+      const status = err.response && err.response.status;
+      if (status === 401 && !isRetry) {
+        this.handleAuthFailure(() => this.sendMessage(true));
+      }
     });
   }
 
@@ -404,15 +410,6 @@ class Room extends React.Component {
                 <article className="notification">
                   <div id="chat">
                     <h4 className="is-size-4">Live Chat</h4>
-                    <div>
-                      Name{' '}
-                      <input
-                        type="text"
-                        className="input"
-                        value={this.state.name}
-                        onChange={this.updateName.bind(this)}
-                      />
-                    </div>
                     <span>
                       Message{' '}
                       <input

@@ -362,14 +362,14 @@ app.post('/api/search', async (req, res) => {
 //
 // ─── HANDLE MESSAGES AND VOTES─────────────────────────────────────────────────────────
 //
-app.post('/api/messages', async (req, res) => {
+app.post('/api/messages', requireUser, async (req, res) => {
   const { message, roomID } = req.body;
   if (!message || typeof message.message !== 'string' || !roomID) {
     res.status(400).json({ error: 'Message and room are required' });
     return;
   }
   try {
-    const savedMessage = await dbHelpers.saveMessage(message.name, message.message, roomID);
+    const savedMessage = await dbHelpers.saveMessage(req.user.email, message.message, roomID);
     res.status(200).json(savedMessage);
   } catch (err) {
     sendError(res, err);
