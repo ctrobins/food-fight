@@ -58,7 +58,8 @@ figure.image {
 #logo {
   font-family: 'Kalam', cursive;
   font-size: 40px;
-  padding: 5px 0px 0px 10px;
+  // Match the banner and card titles: site-body margin plus notification padding.
+  padding: 5px 0 0 calc(10px + 1.5rem);
 }
 
 .user-menu-logout {

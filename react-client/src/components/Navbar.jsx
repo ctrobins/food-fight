@@ -31,7 +31,7 @@ class Navbar extends React.Component {
     return (
       <nav className="navbar is-transparent">
         <div className="navbar-brand">
-          <h1 id="logo">Food Fight with Friends</h1>
+          <h1 id="logo">FoodFight with Friends</h1>
         </div>
 
         <div className="navbar-end">
