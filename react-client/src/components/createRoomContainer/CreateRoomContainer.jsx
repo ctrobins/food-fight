@@ -6,18 +6,16 @@ class CreateRoomContainer extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      combatants: Array(0)
+      combatants: props.loggedInUser ? [props.loggedInUser] : [],
     };
   }
 
-  componentWillReceiveProps(newProps) {
-    if (newProps.loggedInUser &&
-      !this.state.combatants.includes(newProps.loggedInUser)) {
-      this.addCombatant(newProps.loggedInUser);
-    } else if (newProps.loggedInUser === '') {
-      this.setState({
-        combatants: Array(0)
-      });
+  componentDidUpdate(prevProps) {
+    const nextUser = this.props.loggedInUser;
+    if (nextUser && nextUser !== prevProps.loggedInUser) {
+      this.addCombatant(nextUser);
+    } else if (!nextUser && prevProps.loggedInUser) {
+      this.setState({ combatants: [] });
     }
   }
 
@@ -43,7 +41,8 @@ class CreateRoomContainer extends React.Component {
             <div>
               <CreateRoom
                 combatants={this.state.combatants}
-                loggedIn={this.props.loggedIn} />
+                loggedIn={this.props.loggedIn}
+                loggedInUser={this.props.loggedInUser} />
             </div>
           </article>
         </div>

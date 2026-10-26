@@ -50,8 +50,12 @@ const saveRoomAndMembers = async (roomName, zip, members, ownerId) => {
   if (!owner) {
     throw httpError(401, 'Log in to create a room');
   }
-  if (!emails.includes(owner.email)) {
+  if (!emails.some((email) => email.toLowerCase() === owner.email.toLowerCase())) {
     emails.push(owner.email);
+  }
+  const invitedOthers = emails.filter((email) => email.toLowerCase() !== owner.email.toLowerCase());
+  if (!invitedOthers.length) {
+    throw httpError(400, 'The zip must be valid and you must invite combatants.');
   }
 
   const users = await Promise.all(emails.map((email) => db.models.User.findOne({ where: { email } })));

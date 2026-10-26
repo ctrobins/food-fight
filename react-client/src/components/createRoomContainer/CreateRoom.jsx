@@ -38,11 +38,19 @@ class CreateRoom extends React.Component {
     };
   }
 
+  hasInvitedCombatant() {
+    const self = String(this.props.loggedInUser || '').trim().toLowerCase();
+    return (this.props.combatants || []).some((email) => {
+      const value = String(email || '').trim().toLowerCase();
+      return value && value !== self;
+    });
+  }
+
   createRoom() {
     const roomName = this.state.roomName.trim();
     if (this.props.loggedIn === false ||
       !this.state.zipValid ||
-      this.props.combatants.length === 0) {
+      !this.hasInvitedCombatant()) {
       this.setState({
         error: true,
         serverError: '',
@@ -81,6 +89,9 @@ class CreateRoom extends React.Component {
 
   sendRoomEmail(roomInfo, members) {
     members.forEach(email => {
+      if (email === this.props.loggedInUser) {
+        return;
+      }
       api.post('/api/roomEmail', {
         email: email,
         roomInfo: roomInfo,
@@ -153,7 +164,7 @@ class CreateRoom extends React.Component {
           <section className="section login-error" style={{ color: 'white' }}>
             <div className="container">
               <h2 className="subtitle">
-                {this.state.serverError || 'The zip must be valid and the arena must have combatants.'}
+                {this.state.serverError || 'The zip must be valid and you must invite combatants.'}
               </h2>
             </div>
           </section>
