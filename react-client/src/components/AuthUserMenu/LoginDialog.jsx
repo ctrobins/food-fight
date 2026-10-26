@@ -1,4 +1,5 @@
-import React, { Component } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 class LoginDialog extends React.Component {
   constructor(props) {
@@ -92,9 +93,13 @@ class LoginDialog extends React.Component {
 
     return (
       <div>
-        <a className="button is-primary" onClick={this.handleClickOpen}>
-          <span>Login</span>
-        </a>
+        <button
+          type="button"
+          className={this.props.buttonClassName || 'button is-primary'}
+          onClick={this.handleClickOpen}
+        >
+          <span>{this.props.label || 'Login'}</span>
+        </button>
         <div {...isActive} >
           <div className="modal-background"></div>
           <div className="modal-card">
@@ -142,6 +147,9 @@ class LoginDialog extends React.Component {
                   </span>
                 </p>
               </div>
+              <p className="help">
+                Need an account? <Link to="/signup" onClick={this.handleClose}>Sign up</Link>
+              </p>
             </section>
             <footer className="modal-card-foot">
               <button

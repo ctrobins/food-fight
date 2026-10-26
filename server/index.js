@@ -11,13 +11,7 @@ const auth = require('../lib/auth');
 const morgan = require('morgan');
 const socket = require('socket.io');
 
-const mailjetConfigured = process.env.MAILJET_API_KEY && process.env.MAILJET_API_SECRET;
-const Mailjet = mailjetConfigured
-  ? require('node-mailjet').apiConnect(
-    process.env.MAILJET_API_KEY,
-    process.env.MAILJET_API_SECRET,
-  )
-  : null;
+const mail = require('../lib/mail');
 
 const db = require('../database-postgresql/models/index');
 const dbHelpers = require('../db-controllers');
@@ -250,23 +244,15 @@ app.post('/searchUsers', (req, res) => {
 //
 // ─── SERVE EMAIL INVITATIONS ────────────────────────────────────────────────────
 //
-app.post('/api/signupEmail', (req, res) => {
-  if (!Mailjet) {
-    console.log('Mailjet not configured; would invite', req.body.email);
+const appUrl = () => process.env.DOMAIN || 'http://localhost:3000/';
+
+const sendInvite = (res, to, subject, text) => {
+  if (!mail.isConfigured()) {
+    console.log('Mailjet not configured; would email', to);
     res.end('Email skipped (Mailjet not configured)');
     return;
   }
-  console.log('Received request to send email to', req.body.email);
-  const { email } = req.body;
-  const emailData = {
-    FromEmail: 'foodfightHR@gmail.com',
-    FromName: 'Food Fight',
-    Subject: 'You\'ve been invited to Food Fight!',
-    'Text-part': `You've been invited to a Food Fight. Visit ${process.env.DOMAIN || 'http://localhost:3000/'}signup to signup.`,
-    Recipients: [{ Email: email }],
-  };
-  Mailjet.post('send', { version: 'v3.1' })
-    .request({ Messages: [{ ...emailData }] })
+  mail.send({ to, subject, text })
     .then(() => {
       res.end('Email sent!');
     })
@@ -274,32 +260,28 @@ app.post('/api/signupEmail', (req, res) => {
       console.log('Error in interacting with the MailJet API', err);
       res.status(404).end();
     });
+};
+
+app.post('/api/signupEmail', (req, res) => {
+  const { email } = req.body;
+  console.log('Received request to send email to', email);
+  sendInvite(
+    res,
+    email,
+    'You\'ve been invited to Food Fight!',
+    `You've been invited to a Food Fight. Visit ${appUrl()}signup to signup.`,
+  );
 });
 
 app.post('/api/roomEmail', (req, res) => {
-  if (!Mailjet) {
-    console.log('Mailjet not configured; would send room invite', req.body);
-    res.end('Email skipped (Mailjet not configured)');
-    return;
-  }
-  console.log('Received request to send email to', req.body);
   const { email, roomInfo } = req.body;
-  const emailData = {
-    FromEmail: 'foodfightHR@gmail.com',
-    FromName: 'Food Fight',
-    Subject: 'You\'ve been invited to join a Food Fight room!',
-    'Text-part': `You've been invited to a Food Fight room. Visit ${process.env.DOMAIN || 'http://localhost:3000/'}rooms/${roomInfo.uniqueid} to join.`,
-    Recipients: [{ Email: email }],
-  };
-  Mailjet.post('send', { version: 'v3.1' })
-    .request({ Messages: [{ ...emailData }] })
-    .then(() => {
-      res.end('Email sent!');
-    })
-    .catch((err) => {
-      console.log('Error in interacting with the MailJet API', err);
-      res.status(404).end();
-    });
+  console.log('Received request to send email to', req.body);
+  sendInvite(
+    res,
+    email,
+    'You\'ve been invited to join a Food Fight room!',
+    `You've been invited to a Food Fight room. Visit ${appUrl()}rooms/${roomInfo.uniqueid} to join.`,
+  );
 });
 
 

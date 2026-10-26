@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route } from 'react-router-dom';
 
 import Navbar from './components/Navbar.jsx';
+import LoggedOutGate from './components/LoggedOutGate.jsx';
 import api from './api';
 
 import 'bulma/css/bulma.css';
@@ -17,6 +18,7 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      authChecked: false,
       loggedIn: false,
       loggedInUsername: '',
       loginError: false,
@@ -48,7 +50,9 @@ class App extends React.Component {
       window.history.replaceState({}, '', next ? `/?${next}` : '/');
     }
 
-    this.refreshSession().catch(() => {});
+    this.refreshSession().finally(() => {
+      this.setState({ authChecked: true });
+    });
 
     api.get('/api/auth/providers')
       .then((res) => {
@@ -158,43 +162,71 @@ class App extends React.Component {
       </section>
     ) : null;
 
-    return (
-      <BrowserRouter>
-        <div>
-          <Navbar
-            login={this.login.bind(this)}
-            logout={this.logout.bind(this)}
+    const loggedOut = (
+      <Suspense fallback={<div className="section">Loading...</div>}>
+        <Route path="/signup" render={
+          (props) => <SignupPage
             subscribe={this.subscribe.bind(this)}
-            loggedIn={this.state.loggedIn}
-            username={this.state.loggedInUsername}
-            error={this.state.loginError}
             subscribeError={this.state.subscribeError}
             googleEnabled={this.state.googleEnabled}
-            googleSignInMessage={this.state.googleSignInMessage}
+            {...props} />} />
+        <Route render={({ location }) => (
+          location.pathname === '/signup' ? null : (
+            <LoggedOutGate
+              login={this.login.bind(this)}
+              error={this.state.loginError}
+              googleEnabled={this.state.googleEnabled}
+              googleSignInMessage={this.state.googleSignInMessage}
+            />
+          )
+        )} />
+      </Suspense>
+    );
+
+    const loggedIn = (
+      <div>
+        {zipPrompt}
+        <Suspense fallback={<div className="section">Loading...</div>}>
+          <Route exact path="/" render={
+            (props) => <MainView
+              loggedIn={this.state.loggedIn}
+              loggedInUser={this.state.loggedInUsername}
+              {...props} />} />
+          <Route path="/signup" render={
+            (props) => <SignupPage
+              subscribe={this.subscribe.bind(this)}
+              subscribeError={this.state.subscribeError}
+              googleEnabled={this.state.googleEnabled}
+              {...props} />} />
+          <Route path="/rooms/:roomID" render={
+            (props) => (
+              <Room
+                key={props.match.params.roomID}
+                username={this.state.loggedInUsername}
+                onAuthFailure={this.refreshSession.bind(this)}
+                {...props}
+              />
+            )} />
+        </Suspense>
+      </div>
+    );
+
+    let body = <div className="section">Loading...</div>;
+    if (this.state.authChecked) {
+      body = this.state.loggedIn ? loggedIn : loggedOut;
+    }
+
+    return (
+      <BrowserRouter>
+        <div className="app-shell">
+          <Navbar
+            logout={this.logout.bind(this)}
+            loggedIn={this.state.loggedIn}
+            username={this.state.loggedInUsername}
           />
-          {zipPrompt}
-          <Suspense fallback={<div className="section">Loading...</div>}>
-            <Route exact path="/" render={
-              (props) => <MainView
-                loggedIn={this.state.loggedIn}
-                loggedInUser={this.state.loggedInUsername}
-                {...props} />} />
-            <Route path="/signup" render={
-              (props) => <SignupPage
-                subscribe={this.subscribe.bind(this)}
-                subscribeError={this.state.subscribeError}
-                googleEnabled={this.state.googleEnabled}
-                {...props} />} />
-            <Route path="/rooms/:roomID" render={
-              (props) => (
-                <Room
-                  key={props.match.params.roomID}
-                  username={this.state.loggedInUsername}
-                  onAuthFailure={this.refreshSession.bind(this)}
-                  {...props}
-                />
-              )} />
-          </Suspense>
+          <div className="app-main">
+            {body}
+          </div>
         </div>
       </BrowserRouter>
     );

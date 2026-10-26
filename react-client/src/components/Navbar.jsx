@@ -1,32 +1,13 @@
 import React from 'react';
-import LoginDialog from './AuthUserMenu/LoginDialog.jsx';
-import SubscribeDialog from './AuthUserMenu/SubscribeDialog.jsx';
 import UserMenu from './AuthUserMenu/UserMenu.jsx';
 
 class Navbar extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   render() {
-    let authentication = this.props.loggedIn ? (
+    const authentication = this.props.loggedIn ? (
       <UserMenu
         logout={this.props.logout}
         username={this.props.username} />
-    ) : (
-        [<div className="control" key="1">
-          <LoginDialog
-            login={this.props.login}
-            error={this.props.error}
-            googleEnabled={this.props.googleEnabled}
-            googleSignInMessage={this.props.googleSignInMessage} />
-        </div>,
-        <div className="control" key="2">
-          <SubscribeDialog
-            subscribe={this.props.subscribe}
-            subscribeError={this.props.subscribeError} />
-        </div>]
-      );
+    ) : null;
 
     return (
       <nav className="navbar is-transparent">
