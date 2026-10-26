@@ -14,7 +14,10 @@ class LoggedOutGate extends React.Component {
         <div className="hero-body">
           <div className="has-text-centered">
             <h1 className="title is-3">
-              You've been invited to a Food Fight. Log in to continue
+              You've been invited to a Food Fight with Friends!
+              <br />
+              <br />
+              Log in to continue.
             </h1>
             {googleSignInMessage}
             <LoginDialog
