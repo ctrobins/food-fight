@@ -65,6 +65,13 @@ figure.image {
   margin: 10px;
 }
 
+// Line the homepage banner up with the card titles below it.
+// Those titles sit at the site-body margin plus the notification padding.
+.home-hero .hero-body {
+  padding-left: calc(10px + 1.5rem);
+  padding-right: calc(10px + 1.5rem);
+}
+
 #send-invites {
   position: absolute;
   right: 30px;

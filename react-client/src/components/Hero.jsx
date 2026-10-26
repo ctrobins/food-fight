@@ -7,12 +7,10 @@ class Hero extends React.Component {
 
   render() {
     return (
-      <section className="hero is-primary">
+      <section className="hero is-primary home-hero">
         <div className="hero-body">
-          <div className="container">
-            <h1 className="title is-1">Food Fight!</h1>
-            <h2 className="subtitle is-4">Stop bickering over where to eat and start fighting!</h2>
-          </div>
+          <h1 className="title is-1">Food Fight!</h1>
+          <h2 className="subtitle is-4">Stop bickering over where to eat...and start fighting!</h2>
         </div>
       </section>
     );
