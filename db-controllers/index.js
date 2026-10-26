@@ -1,6 +1,19 @@
+const crypto = require('crypto');
 const db = require('../database-postgresql/models');
 const bcrypt = require('bcrypt');
 const uniqueString = require('unique-string');
+
+const ROOM_NAME_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const GENERATED_NAME_ATTEMPTS = 5;
+
+const randomRoomName = () => {
+  const bytes = crypto.randomBytes(3);
+  let suffix = '';
+  for (let i = 0; i < bytes.length; i += 1) {
+    suffix += ROOM_NAME_ALPHABET[bytes[i] % ROOM_NAME_ALPHABET.length];
+  }
+  return `Room ${suffix}`;
+};
 
 const httpError = (status, message, extra = {}) => {
   const error = new Error(message);
@@ -24,10 +37,7 @@ const saveMember = async (email, password, zipcode) => {
 };
 
 const saveRoomAndMembers = async (roomName, zip, members, ownerId) => {
-  const name = String(roomName || '').trim();
-  if (!name) {
-    throw httpError(400, 'Room name is required');
-  }
+  const requestedName = String(roomName || '').trim();
   if (!/^\d{5}$/.test(String(zip || '').trim())) {
     throw httpError(400, 'A valid 5-digit zip code is required');
   }
@@ -50,29 +60,44 @@ const saveRoomAndMembers = async (roomName, zip, members, ownerId) => {
     throw httpError(400, 'Some invited members do not have accounts', { missing });
   }
 
-  const existing = await db.models.Room.findOne({ where: { name } });
-  if (existing) {
-    throw httpError(409, 'A room with that name already exists');
+  const attempts = requestedName ? 1 : GENERATED_NAME_ATTEMPTS;
+  let lastCollision = false;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const name = requestedName || randomRoomName();
+    const existing = await db.models.Room.findOne({ where: { name } });
+    if (existing) {
+      lastCollision = true;
+      continue;
+    }
+
+    try {
+      const room = await db.models.sequelize.transaction(async (transaction) => {
+        const created = await db.models.Room.create({
+          name,
+          uniqueid: uniqueString(),
+          zipcode: Number(zip),
+          owner: owner.id,
+        }, { transaction });
+        await created.addUsers(users, { transaction });
+        return created;
+      });
+      return room.get({ plain: true });
+    } catch (error) {
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        lastCollision = true;
+        continue;
+      }
+      throw error;
+    }
   }
 
-  try {
-    const room = await db.models.sequelize.transaction(async (transaction) => {
-      const created = await db.models.Room.create({
-        name,
-        uniqueid: uniqueString(),
-        zipcode: Number(zip),
-        owner: owner.id,
-      }, { transaction });
-      await created.addUsers(users, { transaction });
-      return created;
-    });
-    return room.get({ plain: true });
-  } catch (error) {
-    if (error.name === 'SequelizeUniqueConstraintError') {
-      throw httpError(409, 'A room with that name already exists');
-    }
-    throw error;
+  if (lastCollision) {
+    throw httpError(409, requestedName
+      ? 'A room with that name already exists'
+      : 'Could not assign a room name. Try again.');
   }
+  throw httpError(500, 'Could not create the room');
 };
 
 const saveMessage = async (name, message, roomID) => {

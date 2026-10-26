@@ -335,13 +335,16 @@ class Room extends React.Component {
       <div>Please nominate a restaurant</div>
     );
     const canVote = Boolean(this.state.currentSelection) && !this.state.isNominating && !this.state.hasVoted;
+    const roomTitle = this.state.roomName.startsWith('Room ')
+      ? this.state.roomName
+      : `Room ${this.state.roomName}`;
     return (
       <div>
         <section className="hero is-primary">
           <div className="hero-body">
             <div className="container">
               <h1 className="title">
-                Welcome to Room {this.state.roomName}
+                Welcome to {roomTitle}
               </h1>
               <h2 className="subtitle">
                 <div>

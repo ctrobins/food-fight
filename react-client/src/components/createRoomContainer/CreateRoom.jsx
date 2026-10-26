@@ -3,13 +3,31 @@ import CombatantsContainer from './CombatantsContainer.jsx';
 import { withRouter } from 'react-router-dom';
 import api from '../../api';
 
+const ROOM_NAME_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+const randomRoomName = () => {
+  const bytes = new Uint8Array(3);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  let suffix = '';
+  for (let i = 0; i < bytes.length; i += 1) {
+    suffix += ROOM_NAME_ALPHABET[bytes[i] % ROOM_NAME_ALPHABET.length];
+  }
+  return `Room ${suffix}`;
+};
+
 class CreateRoom extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       query: '',
       roomID: null,
-      roomName: '',
+      roomName: randomRoomName(),
       zipCode: '',
 
       zipValid: false,
@@ -21,8 +39,8 @@ class CreateRoom extends React.Component {
   }
 
   createRoom() {
+    const roomName = this.state.roomName.trim();
     if (this.props.loggedIn === false ||
-      this.state.roomName.length === 0 ||
       !this.state.zipValid ||
       this.props.combatants.length === 0) {
       this.setState({
@@ -31,7 +49,7 @@ class CreateRoom extends React.Component {
       });
     } else {
       api.post('/api/save', {
-        roomName: this.state.roomName,
+        roomName,
         zip: this.state.zipCode,
         members: this.props.combatants,
       })
@@ -135,7 +153,7 @@ class CreateRoom extends React.Component {
           <section className="section login-error" style={{ color: 'white' }}>
             <div className="container">
               <h2 className="subtitle">
-                {this.state.serverError || 'You must have a name, the zip must be valid and the arena must have combatants.'}
+                {this.state.serverError || 'The zip must be valid and the arena must have combatants.'}
               </h2>
             </div>
           </section>
@@ -151,19 +169,6 @@ class CreateRoom extends React.Component {
           </p>
           {createRoomError()}
           <div className="columns">
-            <div className="column is-three-quarters">
-              <div className="field">
-                <label className="label">Name</label>
-                <p className="control is-expanded">
-                  <input
-                    className="input is-large"
-                    type="text"
-                    placeholder="Arena name..."
-                    value={this.state.roomName}
-                    onChange={this.updateRoomName.bind(this)} />
-                </p>
-              </div>
-            </div>
             <div className="column">
               <div className="field">
                 <label className="label">Region</label>
@@ -177,6 +182,19 @@ class CreateRoom extends React.Component {
                     {...isZipValid1()}
                     placeholder="Zip Code"
                   />
+                </p>
+              </div>
+            </div>
+            <div className="column is-three-quarters">
+              <div className="field">
+                <label className="label">Name <span className="has-text-weight-normal">(optional)</span></label>
+                <p className="control is-expanded">
+                  <input
+                    className="input is-large"
+                    type="text"
+                    placeholder="Room name (optional)"
+                    value={this.state.roomName}
+                    onChange={this.updateRoomName.bind(this)} />
                 </p>
               </div>
             </div>
