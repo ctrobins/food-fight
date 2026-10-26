@@ -8,8 +8,6 @@ class MainView extends React.Component {
       <div>
         <Hero />
         <CreateRoomContainer
-          searchUsers={this.props.searchUsers}
-          searchedUsers={this.props.searchedUsers}
           loggedIn={this.props.loggedIn}
           loggedInUser={this.props.loggedInUser}
         />

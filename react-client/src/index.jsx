@@ -26,7 +26,6 @@ class App extends React.Component {
       needsZip: false,
       zipDraft: '',
       zipError: false,
-      searchedUsers: [],
     };
   }
 
@@ -78,15 +77,6 @@ class App extends React.Component {
         return false;
       })
       .catch(() => false);
-  }
-
-  searchUsers(query) {
-    api.post('/searchUsers', { query })
-      .then((res) => {
-        this.setState({
-          searchedUsers: res.data,
-        });
-      });
   }
 
   subscribe(email, password, zip) {
@@ -186,8 +176,6 @@ class App extends React.Component {
           <Suspense fallback={<div className="section">Loading...</div>}>
             <Route exact path="/" render={
               (props) => <MainView
-                searchUsers={this.searchUsers.bind(this)}
-                searchedUsers={this.state.searchedUsers}
                 loggedIn={this.state.loggedIn}
                 loggedInUser={this.state.loggedInUsername}
                 {...props} />} />

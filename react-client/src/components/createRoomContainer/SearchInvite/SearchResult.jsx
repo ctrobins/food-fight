@@ -12,16 +12,14 @@ class SearchResult extends React.Component {
           <p className="user-search-email">
             {this.props.user.email}
           </p>
-          <span>
-            <a
-              className="user-search-button button is-info is-small"
-              onClick={this.props.addCombatant.bind(this, this.props.user.email)}>
-              <span>Add</span>
-              <span className="icon is-small">
-                <i className="fas fa-angle-right"></i>
-              </span>
-            </a>
-          </span>
+          <button
+            type="button"
+            className={`button is-small ${this.props.added ? '' : 'is-info'}`}
+            disabled={this.props.added}
+            onClick={() => this.props.addCombatant(this.props.user.email)}
+          >
+            {this.props.added ? 'Added' : 'Add'}
+          </button>
         </div>
       </div>
     )

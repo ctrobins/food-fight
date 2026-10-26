@@ -1,7 +1,5 @@
 import React from 'react';
-import axios from 'axios';
 import SearchUsersPanel from './SearchInvite/SearchUsersPanel.jsx';
-import InviteUsers from './SearchInvite/InviteUsers.jsx';
 import CreateRoom from './CreateRoom.jsx';
 
 class CreateRoomContainer extends React.Component {
@@ -24,8 +22,11 @@ class CreateRoomContainer extends React.Component {
   }
 
   addCombatant(email) {
-    this.setState({
-      combatants: [...this.state.combatants, email]
+    this.setState((state) => {
+      if (state.combatants.includes(email)) {
+        return null;
+      }
+      return { combatants: [...state.combatants, email] };
     });
   }
 
@@ -34,8 +35,7 @@ class CreateRoomContainer extends React.Component {
       <div id="site-body" className="tile is-ancestor" >
         <div className="tile is-parent is-vertical">
           <SearchUsersPanel
-            searchUsers={this.props.searchUsers}
-            foundUsers={this.props.searchedUsers}
+            combatants={this.state.combatants}
             addCombatant={this.addCombatant.bind(this)} />
         </div>
         <div className="tile is-parent is-vertical is-8">

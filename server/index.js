@@ -232,12 +232,13 @@ app.post('/searchUsers', (req, res) => {
     res.status(200).send([]);
     return;
   }
+  const escaped = query.replace(/[%_\\]/g, '\\$&');
   db.models.User.findAll({
     limit: 10,
     attributes: ['id', 'email'],
     where: {
       email: {
-        [Op.iLike]: `%${query}%`,
+        [Op.iLike]: `%${escaped}%`,
       },
     },
   })

@@ -122,6 +122,24 @@ figure.image {
   margin-top: 0.5rem;
 }
 
+.fighter-result-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: hsl(0, 0%, 40%);
+}
+
+.fighter-status {
+  margin: 0.5rem 0 0;
+}
+
+.fighter-status.is-success {
+  color: hsl(141, 71%, 30%);
+}
+
+.fighter-status.is-danger {
+  color: hsl(348, 100%, 45%);
+}
+
 .tile.is-child.notification.combatants {
   margin-bottom: 10px !important;
 }
