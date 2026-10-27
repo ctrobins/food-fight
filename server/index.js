@@ -249,7 +249,13 @@ app.post('/searchUsers', (req, res) => {
 //
 // ─── SERVE EMAIL INVITATIONS ────────────────────────────────────────────────────
 //
-const appUrl = () => process.env.DOMAIN || 'http://localhost:3000/';
+const appUrl = () => {
+  const domain = process.env.DOMAIN || '';
+  if (domain.includes('localhost') || domain.includes('127.0.0.1')) {
+    return domain.endsWith('/') ? domain : `${domain}/`;
+  }
+  return 'http://foodfight.cartertrobinson.me/';
+};
 
 const sendInvite = (res, to, subject, text) => {
   if (!mail.isConfigured()) {
